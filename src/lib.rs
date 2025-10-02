@@ -1,7 +1,7 @@
 use axum::{routing::get, Router};
 use axum::{extract::Path, http::StatusCode};
 use axum::extract::RawQuery;
-use encoding_rs::{Encoding, EUC_KR};
+use encoding_rs::{Encoding};
 use jmespath::{compile, Variable};
 use tower_service::Service;
 use worker::{event, HttpRequest, Env, Context, Result as WorkerResult, Fetch, Url};
@@ -74,7 +74,8 @@ pub async fn jmespath(Path((input, url)): Path<(String, String)>, RawQuery(query
                 .and_then(|ct| extract_charset(&ct));
 
             // 3) 디코딩
-            let text = decode_bytes_with_charset(&body, charset.as_deref());
+            let text = decode_bytes_with_charset(&body, charset.as_deref())
+                .map_err(|e| err_internal_server(format!("ERROR[DECODE]; {e}")))?;
             Ok(text)
         }.await;
 
@@ -131,22 +132,15 @@ fn extract_charset(ct: &str) -> Option<String> {
         })
 }
 
-/// charset 힌트가 있으면 해당 인코딩, 없거나 실패하면 UTF-8 → EUC-KR 순으로 시도
-fn decode_bytes_with_charset(bytes: &[u8], charset_label: Option<&str>) -> String {
+/// charset 힌트가 있으면 해당 인코딩, 없거나 실패하면 UTF-8 시도
+fn decode_bytes_with_charset(bytes: &[u8], charset_label: Option<&str>) -> Result<String,String> {
     // charset 힌트가 있으면 해당 인코딩으로 시도
     if let Some(label) = charset_label {
         if let Some(enc) = Encoding::for_label(label.as_bytes()) {
             let (cow, _, _) = enc.decode(bytes);
-            return cow.into_owned();
+            return Ok(cow.into_owned());
         }
     }
     // 우선 UTF-8 디코드 시도
-    match String::from_utf8(bytes.to_vec()) {
-        Ok(s) => s,
-        Err(_) => {
-            // 실패하면 EUC-KR 디코드 시도
-            let (cow, _, _) = EUC_KR.decode(bytes);
-            cow.into_owned()
-        },
-    }
+    String::from_utf8(bytes.to_vec()).map_err(|e| e.to_string())
 }
