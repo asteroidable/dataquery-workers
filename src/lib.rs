@@ -63,7 +63,13 @@ pub async fn raw(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // url
     let full_url = build_full_url(url, query);
 
-    build_response(format!("{input}\n{full_url}"))
+    // fetch
+    let text = match fetch_url(&full_url).await {
+        Ok(v) => v,
+        Err(e) => return Ok(e),
+    };
+
+    build_response(format!("{input}\n{full_url}\n{text}"))
 }
 
 /// /jp/{input}/s/{url}
@@ -77,31 +83,11 @@ pub async fn jmespath(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // url
     let full_url = build_full_url(url, query);
 
-    // parse
-    let parsed = resp_try!(
-        Url::parse(&full_url),
-        BAD_REQUEST, "ERROR[PARSE];");
-
     // fetch
-    let mut resp = resp_try!(
-        Fetch::Url(parsed).send().await,
-        INTERNAL_SERVER_ERROR, "ERROR[SEND];");
-
-    // bytes
-    let body = resp_try!(
-        resp.bytes().await,
-        INTERNAL_SERVER_ERROR, "ERROR[BYTES];");
-
-    // charset
-    let charset = match resp.headers().get("content-type") {
-        Ok(Some(v)) => extract_charset(&v),
-        _ => None,
+    let text = match fetch_url(&full_url).await {
+        Ok(v) => v,
+        Err(e) => return Ok(e),
     };
-
-    // decode
-    let text = resp_try!(
-        decode_bytes_with_charset(&body, charset.as_deref()),
-        INTERNAL_SERVER_ERROR, "ERROR[DECODE];");
 
     // json
     let data = resp_try!(
@@ -153,4 +139,25 @@ fn decode_bytes_with_charset(bytes: &[u8], charset_label: Option<&str>) -> StdRe
         }
     }
     String::from_utf8(bytes.to_vec())
+}
+
+async fn fetch_url(url: &String) -> StdResult<String,Response> {
+    let parsed = Url::parse(url)
+        .map_err(|e| resp_err!(e, BAD_REQUEST, "ERROR[PARSE];"))?;
+
+    let mut resp = Fetch::Url(parsed).send().await
+        .map_err(|e| resp_err!(e, INTERNAL_SERVER_ERROR, "ERROR[SEND];"))?;
+
+    let body = resp.bytes().await
+        .map_err(|e| resp_err!(e, INTERNAL_SERVER_ERROR, "ERROR[BYTES];"))?;
+
+    let charset = match resp.headers().get("content-type") {
+        Ok(Some(v)) => extract_charset(&v),
+        _ => None,
+    };
+
+    let text = decode_bytes_with_charset(&body, charset.as_deref())
+        .map_err(|e| resp_err!(e, INTERNAL_SERVER_ERROR, "ERROR[DECODE];"))?;
+
+    Ok(text)
 }
