@@ -35,6 +35,7 @@ async fn fetch(
         .get_async("/", root)
         .get_async("/raw/:input/s/*url", raw)
         .get_async("/jp/:input/s/*url", jmespath)
+        .get_async("/jmespath/:input/s/*url", jmespath)
         .run(req, env)
         .await
 }
