@@ -22,7 +22,7 @@ dataquery
 
 원본 요청을 가져와 “세 줄”로 에코합니다.
 
-1. `:input` (URL-decoded)
+1. `:input`
 2. `*url` 에 현재 요청의 query string을 이어붙인 최종 URL
 3. 최종 URL의 HTTP GET 응답 본문
 
@@ -94,6 +94,10 @@ npx wrangler deploy
 * `/jp/...`, `/jmespath/...` 엔드포인트는 응답이 JSON이어야 정상 동작합니다.
 HTML 등 JSON이 아니면 JSON 파싱 단계에서 실패합니다.
 
-* `*url`은 디코딩하지 않고 그대로 사용합니다.
 
-* 외부 URL 호출 정책(CORS와 무관, 서버→서버) 및 Cloudflare Workers의 네트워킹 제약은 계정/플랜 설정을 따릅니다.
+## 의존성
+
+* workers-rs (worker): Cloudflare Workers
+* encoding_rs: 문자셋 디코딩 (charset 힌트 우선)
+* urlencoding: :URL 디코딩
+* jmespath: JSON 질의
