@@ -58,7 +58,9 @@ pub async fn raw(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let input = ctx.param("input")
         .map(|v| urlencoding::decode(v).ok()).flatten()
         .map(String::from).unwrap_or_default();
-    let url = ctx.param("url").map(String::from).unwrap_or_default();
+    let url = ctx.param("url")
+        .map(|v| urlencoding::decode(v).ok()).flatten()
+        .map(String::from).unwrap_or_default();
     let query = req.url()?.query().map(String::from);
 
     // url
@@ -78,7 +80,9 @@ pub async fn jmespath(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let input = ctx.param("input")
         .map(|v| urlencoding::decode(v).ok()).flatten()
         .map(String::from).unwrap_or_default();
-    let url = ctx.param("url").map(String::from).unwrap_or_default();
+    let url = ctx.param("url")
+        .map(|v| urlencoding::decode(v).ok()).flatten()
+        .map(String::from).unwrap_or_default();
     let query = req.url()?.query().map(String::from);
 
     // url

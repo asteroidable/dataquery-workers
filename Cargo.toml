@@ -3,6 +3,7 @@ name = "dataquery"
 version = "1.1.0"
 edition = "2021"
 authors = ["ast <asteroidable@gmail.com>"]
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib"]
